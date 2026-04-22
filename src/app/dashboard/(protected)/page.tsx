@@ -133,7 +133,7 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
 
       {/* Header */}
       <div>
@@ -155,7 +155,7 @@ export default function DashboardHome() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map(({ label, valor, sub, icon: Icon, cor, bg }) => (
           <div key={label} className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(26,10,46,0.06)]">
             <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>

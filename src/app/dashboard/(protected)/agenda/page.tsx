@@ -76,7 +76,7 @@ export default function AgendaDashboard() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
+    <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[#1A0A2E] text-2xl font-semibold">Agenda</h1>

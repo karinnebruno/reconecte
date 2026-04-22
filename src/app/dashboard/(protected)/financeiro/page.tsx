@@ -83,7 +83,7 @@ export default function FinanceiroPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
+    <div className="p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -116,7 +116,7 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(26,10,46,0.06)]">
           <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center mb-3">
             <TrendingUp size={18} className="text-green-600" strokeWidth={1.5} />

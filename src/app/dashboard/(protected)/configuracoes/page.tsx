@@ -40,7 +40,7 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-[#1A0A2E] text-2xl font-semibold">Configurações</h1>
         <p className="text-[#9B7BB8] text-sm mt-0.5">Configurações do sistema</p>

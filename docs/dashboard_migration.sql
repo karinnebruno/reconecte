@@ -13,9 +13,12 @@ ALTER TABLE profiles
   CHECK (role IN ('admin', 'secretaria', 'user'));
 
 -- Definir a secretária de teste
+-- NOTA: a coluna email está em auth.users, não em profiles
 UPDATE profiles
 SET role = 'secretaria'
-WHERE email = 'teste@teste.com';
+WHERE id = (
+  SELECT id FROM auth.users WHERE email = 'teste@teste.com' LIMIT 1
+);
 
 -- ============================================================
 -- 2. Pacientes (gerenciados pela clínica, não necessariamente usuários do app)

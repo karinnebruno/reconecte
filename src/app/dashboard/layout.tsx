@@ -18,11 +18,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (pathname === "/dashboard/login") return;
-    async function verificar() {
-      try {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) { router.replace("/dashboard/login"); return; }
+
+    const supabase = createClient();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!session) {
+          router.replace("/dashboard/login");
+          return;
+        }
 
         const { data: profile } = await supabase
           .from("profiles")
@@ -34,16 +38,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           router.replace("/dashboard/login");
           return;
         }
+
         setUser({
           role: profile.role as "admin" | "secretaria",
           nome: profile.nome || profile.email || session.user.email || "Usuário",
         });
         setVerificando(false);
-      } catch {
-        router.replace("/dashboard/login");
       }
-    }
-    verificar();
+    );
+
+    return () => subscription.unsubscribe();
   }, [router, pathname]);
 
   if (pathname === "/dashboard/login") return <>{children}</>;

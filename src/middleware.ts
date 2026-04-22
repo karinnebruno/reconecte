@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   // Aqui apenas garantimos que /dashboard/* nunca sirva sem cookie de sessão Supabase
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard") && !pathname.startsWith("/dashboard/login")) {
     const hasCookie =
       request.cookies.has("sb-access-token") ||
       request.cookies.has("sb-refresh-token") ||

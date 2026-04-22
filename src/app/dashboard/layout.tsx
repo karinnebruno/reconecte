@@ -19,28 +19,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (pathname === "/dashboard/login") return;
     async function verificar() {
-      const supabase = createClient();
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) { router.replace("/dashboard/login"); return; }
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) { router.replace("/dashboard/login"); return; }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, nome, email")
-        .eq("id", authUser.id)
-        .single();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, nome, email")
+          .eq("id", session.user.id)
+          .single();
 
-      if (!profile || !["admin", "secretaria"].includes(profile.role ?? "")) {
+        if (!profile || !["admin", "secretaria"].includes(profile.role ?? "")) {
+          router.replace("/dashboard/login");
+          return;
+        }
+        setUser({
+          role: profile.role as "admin" | "secretaria",
+          nome: profile.nome || profile.email || session.user.email || "Usuário",
+        });
+        setVerificando(false);
+      } catch {
         router.replace("/dashboard/login");
-        return;
       }
-      setUser({
-        role: profile.role as "admin" | "secretaria",
-        nome: profile.nome || profile.email || authUser.email || "Usuário",
-      });
-      setVerificando(false);
     }
     verificar();
-  }, [router]);
+  }, [router, pathname]);
 
   if (pathname === "/dashboard/login") return <>{children}</>;
 

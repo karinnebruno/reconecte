@@ -51,7 +51,7 @@ export default function AdminDashboard() {
 
   const acoes = [
     { label: "Gerenciar trilhas", desc: "Criar e editar trilhas, módulos e lições", emoji: "📚", href: "/admin/trilhas" },
-    { label: "Ver agendamentos", desc: "Sessões marcadas e pendentes", emoji: "📅", href: null },
+    { label: "Ver agendamentos", desc: "Sessões marcadas e pendentes", emoji: "📅", href: "/admin/agendamentos" },
     { label: "Mensagens", desc: "Conversas com usuários", emoji: "💬", href: "/mensagens" },
   ];
 

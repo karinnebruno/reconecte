@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/ui";
+import { createClient } from "@/lib/supabase";
 
 const trilhasAtivas = [
   {
@@ -28,42 +29,95 @@ const emojisHumor = [
 
 export default function HomePage() {
   const router = useRouter();
+  const [nomeUsuario, setNomeUsuario] = useState("");
+  const [streak, setStreak] = useState(0);
   const [humorSelecionado, setHumorSelecionado] = useState<number | null>(null);
   const [mostrarNotaHumor, setMostrarNotaHumor] = useState(false);
   const [notaHumor, setNotaHumor] = useState("");
   const [humorSalvo, setHumorSalvo] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function carregarUsuario() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/entrar"); return; }
+
+      setUserId(user.id);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("id", user.id)
+        .single();
+      if (profile) setNomeUsuario(profile.nome.split(" ")[0]);
+
+      const { data: streakData } = await supabase
+        .from("streaks")
+        .select("current_streak")
+        .eq("user_id", user.id)
+        .single();
+      if (streakData) setStreak(streakData.current_streak);
+
+      const hoje = new Date().toISOString().split("T")[0];
+      const { data: humor } = await supabase
+        .from("mood_entries")
+        .select("humor")
+        .eq("user_id", user.id)
+        .eq("data", hoje)
+        .single();
+      if (humor) { setHumorSelecionado(humor.humor); setHumorSalvo(true); }
+    }
+
+    carregarUsuario();
+  }, [router]);
 
   function selecionarHumor(valor: number) {
     setHumorSelecionado(valor);
     setMostrarNotaHumor(true);
   }
 
-  function salvarHumor() {
-    // Supabase insert será conectado aqui
+  async function salvarHumor() {
+    if (!userId || !humorSelecionado) return;
+    const supabase = createClient();
+    const hoje = new Date().toISOString().split("T")[0];
+    const emojiAtual = emojisHumor.find(h => h.valor === humorSelecionado)?.emoji;
+
+    await supabase.from("mood_entries").upsert({
+      user_id: userId,
+      humor: humorSelecionado,
+      emoji: emojiAtual,
+      nota: notaHumor || null,
+      data: hoje,
+    });
+
     setHumorSalvo(true);
     setMostrarNotaHumor(false);
   }
 
+  const saudacao = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Bom dia";
+    if (h < 18) return "Boa tarde";
+    return "Boa noite";
+  })();
+
   return (
     <div className="min-h-dvh bg-[#FAF4FF] pb-24">
 
-      {/* Header */}
       <div className="bg-[#1A0A2E] px-5 pt-12 pb-6">
         <div className="flex justify-between items-start">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Bom dia</p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">{saudacao}{nomeUsuario ? `, ${nomeUsuario}` : ""}</p>
             <h1 className="text-white text-2xl font-light">Como você está hoje?</h1>
           </motion.div>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex items-center gap-1 bg-[#6B3FA0]/30 rounded-full px-3 py-1.5">
+          {streak > 0 && (
+            <div className="flex items-center gap-1 bg-[#6B3FA0]/30 rounded-full px-3 py-1.5 mt-1">
               <span className="text-sm">🔥</span>
-              <span className="text-white text-xs">3</span>
+              <span className="text-white text-xs">{streak}</span>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -87,9 +141,7 @@ export default function HomePage() {
                     key={valor}
                     onClick={() => selecionarHumor(valor)}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 ${
-                      humorSelecionado === valor
-                        ? "bg-[#EDD5F5] scale-110"
-                        : "hover:bg-[#F0E2FB]"
+                      humorSelecionado === valor ? "bg-[#EDD5F5] scale-110" : "hover:bg-[#F0E2FB]"
                     }`}
                   >
                     <span className="text-2xl">{emoji}</span>
@@ -114,10 +166,7 @@ export default function HomePage() {
                       rows={2}
                       className="w-full bg-[#FAF4FF] border border-[#EDD5F5] rounded-xl px-3 py-2.5 text-sm text-[#1A0A2E] placeholder:text-[#9B7BB8]/60 focus:outline-none focus:border-[#6B3FA0] resize-none transition-colors mb-3"
                     />
-                    <button
-                      onClick={salvarHumor}
-                      className="w-full bg-[#6B3FA0] text-white py-2.5 rounded-xl text-xs tracking-wide"
-                    >
+                    <button onClick={salvarHumor} className="w-full bg-[#6B3FA0] text-white py-2.5 rounded-xl text-xs tracking-wide">
                       Registrar
                     </button>
                   </motion.div>
@@ -139,7 +188,7 @@ export default function HomePage() {
           )}
         </motion.div>
 
-        {/* CTA agendamento — discreto mas presente */}
+        {/* CTA agendamento */}
         <motion.button
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -207,7 +256,6 @@ export default function HomePage() {
           <p className="text-[#1A0A2E] text-sm leading-relaxed">{desafioHoje}</p>
         </motion.div>
 
-        {/* Ver todas as trilhas */}
         <motion.button
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -217,7 +265,6 @@ export default function HomePage() {
         >
           Ver todas as trilhas
         </motion.button>
-
       </div>
 
       <BottomNav />

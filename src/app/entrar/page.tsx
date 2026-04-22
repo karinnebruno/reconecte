@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { createClient } from "@/lib/supabase";
 
 function EntrarForm() {
   const router = useRouter();
@@ -12,6 +12,7 @@ function EntrarForm() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
@@ -20,26 +21,42 @@ function EntrarForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErro("");
     setCarregando(true);
-    // Supabase auth será conectado aqui
-    await new Promise((r) => setTimeout(r, 800));
+
+    const supabase = createClient();
+
+    if (modo === "cadastro") {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: senha,
+        options: { data: { nome } },
+      });
+      if (error) {
+        setErro(traduzirErro(error.message));
+        setCarregando(false);
+        return;
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (error) {
+        setErro(traduzirErro(error.message));
+        setCarregando(false);
+        return;
+      }
+    }
+
     setCarregando(false);
     router.push("/home");
   }
 
   return (
     <div className="min-h-dvh bg-[#FAF4FF] flex flex-col">
-
-      {/* Header */}
       <div className="bg-[#1A0A2E] px-6 pt-12 pb-8">
         <button onClick={() => router.back()} className="text-[#9B7BB8] text-sm mb-6 flex items-center gap-2">
           ← Voltar
         </button>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">reconecte</p>
           <h1 className="text-white text-3xl font-light">
             {modo === "cadastro" ? "Criar conta" : "Entrar"}
@@ -47,16 +64,13 @@ function EntrarForm() {
         </motion.div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-[#EDD5F5]">
         {(["cadastro", "login"] as const).map((m) => (
           <button
             key={m}
-            onClick={() => setModo(m)}
+            onClick={() => { setModo(m); setErro(""); }}
             className={`flex-1 py-3.5 text-xs tracking-widest uppercase transition-colors duration-200 ${
-              modo === m
-                ? "text-[#6B3FA0] border-b-2 border-[#6B3FA0] -mb-px"
-                : "text-[#9B7BB8]"
+              modo === m ? "text-[#6B3FA0] border-b-2 border-[#6B3FA0] -mb-px" : "text-[#9B7BB8]"
             }`}
           >
             {m === "cadastro" ? "Criar conta" : "Já tenho conta"}
@@ -64,7 +78,6 @@ function EntrarForm() {
         ))}
       </div>
 
-      {/* Form */}
       <div className="flex-1 px-6 pt-8 pb-8">
         <motion.form
           key={modo}
@@ -76,9 +89,7 @@ function EntrarForm() {
         >
           {modo === "cadastro" && (
             <div>
-              <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">
-                Seu nome
-              </label>
+              <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">Seu nome</label>
               <input
                 type="text"
                 value={nome}
@@ -91,9 +102,7 @@ function EntrarForm() {
           )}
 
           <div>
-            <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">
-              E-mail
-            </label>
+            <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">E-mail</label>
             <input
               type="email"
               value={email}
@@ -105,14 +114,12 @@ function EntrarForm() {
           </div>
 
           <div>
-            <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">
-              Senha
-            </label>
+            <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">Senha</label>
             <input
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              placeholder={modo === "cadastro" ? "Mínimo 8 caracteres" : "Sua senha"}
+              placeholder={modo === "cadastro" ? "Mínimo 6 caracteres" : "Sua senha"}
               required
               className="w-full bg-white border border-[#EDD5F5] rounded-2xl px-4 py-3.5 text-sm text-[#1A0A2E] placeholder:text-[#9B7BB8]/60 focus:outline-none focus:border-[#6B3FA0] transition-colors"
             />
@@ -120,9 +127,13 @@ function EntrarForm() {
 
           {modo === "login" && (
             <div className="text-right">
-              <button type="button" className="text-[#9B7BB8] text-xs">
-                Esqueci minha senha
-              </button>
+              <button type="button" className="text-[#9B7BB8] text-xs">Esqueci minha senha</button>
+            </div>
+          )}
+
+          {erro && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <p className="text-red-600 text-xs">{erro}</p>
             </div>
           )}
 
@@ -132,11 +143,7 @@ function EntrarForm() {
               disabled={carregando}
               className="w-full bg-[#1A0A2E] text-white py-4 rounded-2xl text-sm tracking-wide hover:bg-[#6B3FA0] active:scale-95 transition-all duration-200 disabled:opacity-60"
             >
-              {carregando
-                ? "Aguarde..."
-                : modo === "cadastro"
-                ? "Começar minha jornada"
-                : "Entrar"}
+              {carregando ? "Aguarde..." : modo === "cadastro" ? "Começar minha jornada" : "Entrar"}
             </button>
           </div>
 
@@ -151,6 +158,14 @@ function EntrarForm() {
       </div>
     </div>
   );
+}
+
+function traduzirErro(msg: string): string {
+  if (msg.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
+  if (msg.includes("Email not confirmed")) return "Confirme seu e-mail antes de entrar.";
+  if (msg.includes("User already registered")) return "Este e-mail já está cadastrado.";
+  if (msg.includes("Password should be")) return "A senha deve ter pelo menos 6 caracteres.";
+  return "Ocorreu um erro. Tente novamente.";
 }
 
 export default function EntrarPage() {

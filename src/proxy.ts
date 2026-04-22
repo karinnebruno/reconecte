@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // /dashboard é protegido — auth verificada client-side no layout
   // Aqui apenas garantimos que /dashboard/* nunca sirva sem cookie de sessão Supabase
   const { pathname } = request.nextUrl;

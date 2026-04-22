@@ -30,7 +30,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, nome, email")
+    .select("role, nome")
     .eq("id", user.id)
     .single();
 
@@ -41,7 +41,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   return (
     <DashboardShell
       role={profile!.role as "admin" | "secretaria"}
-      nome={profile!.nome || profile!.email || user.email || "Usuário"}
+      nome={profile!.nome || user.email || "Usuário"}
     >
       {children}
     </DashboardShell>

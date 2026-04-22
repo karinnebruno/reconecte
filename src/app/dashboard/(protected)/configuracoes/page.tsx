@@ -30,7 +30,7 @@ export default function ConfiguracoesPage() {
     const email = prompt("E-mail do usuário para definir como secretária:");
     if (!email) return;
     const supabase = createClient();
-    const { data: profiles } = await supabase.from("profiles").select("id, email").ilike("email", email);
+    const { data: profiles } = await supabase.from("profiles").select("id").ilike("nome", email);
     if (!profiles || profiles.length === 0) {
       alert("Usuário não encontrado. O usuário precisa ter feito login no app ao menos uma vez.");
       return;

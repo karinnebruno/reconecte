@@ -1,62 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase";
 
 export default function DashboardLogin() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const [verificandoSessao, setVerificandoSessao] = useState(true);
-
-  // Se já tem sessão com role admin/secretaria, entra direto
-  useEffect(() => {
-    async function checar() {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        if (profile && ["admin", "secretaria"].includes(profile.role ?? "")) {
-          router.replace("/dashboard");
-          return;
-        }
-      }
-      setVerificandoSessao(false);
-    }
-    checar();
-  }, [router]);
-
-  async function entrarComEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setErro("");
-    setCarregando(true);
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
-    if (error || !data.user) {
-      setErro("E-mail ou senha incorretos.");
-      setCarregando(false);
-      return;
-    }
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
-    if (!profile || !["admin", "secretaria"].includes(profile.role ?? "")) {
-      await supabase.auth.signOut();
-      setErro("Acesso não autorizado para este e-mail.");
-      setCarregando(false);
-      return;
-    }
-    router.push("/dashboard");
-  }
 
   async function entrarComGoogle() {
     setErro("");
@@ -65,7 +16,7 @@ export default function DashboardLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/login`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
     if (error) {
@@ -74,12 +25,19 @@ export default function DashboardLogin() {
     }
   }
 
-  if (verificandoSessao) {
-    return (
-      <div className="min-h-screen bg-[#0E0620] flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full border-2 border-[#6B3FA0] border-t-transparent animate-spin" />
-      </div>
-    );
+  async function entrarComEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setErro("");
+    setCarregando(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (error) {
+      setErro("E-mail ou senha incorretos.");
+      setCarregando(false);
+      return;
+    }
+    // Redireciona para o dashboard — o Server Component valida o role
+    window.location.href = "/dashboard";
   }
 
   return (
@@ -94,7 +52,6 @@ export default function DashboardLogin() {
         </div>
 
         <div className="bg-[#1A0A2E] rounded-2xl p-6 space-y-4 border border-[#2D1155]">
-          {/* Google */}
           <button
             onClick={entrarComGoogle}
             disabled={carregando}
@@ -115,7 +72,6 @@ export default function DashboardLogin() {
             <div className="flex-1 h-px bg-[#2D1155]" />
           </div>
 
-          {/* Email/senha */}
           <form onSubmit={entrarComEmail} className="space-y-4">
             <div>
               <label className="block text-[#9B7BB8] text-xs tracking-widest uppercase mb-2">E-mail</label>

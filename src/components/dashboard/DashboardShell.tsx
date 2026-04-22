@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 
 interface Props {
@@ -9,6 +10,17 @@ interface Props {
 }
 
 export default function DashboardShell({ role, nome, children }: Props) {
+  useEffect(() => {
+    const shell = document.getElementById("app-shell");
+    if (!shell) return;
+    shell.style.maxWidth = "100%";
+    shell.style.boxShadow = "none";
+    return () => {
+      shell.style.maxWidth = "";
+      shell.style.boxShadow = "";
+    };
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-[#F5F0FB]">
       <Sidebar role={role} nome={nome} />

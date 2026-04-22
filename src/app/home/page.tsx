@@ -217,7 +217,7 @@ export default function HomePage() {
             whileTap={{ scale: 0.98 }}
             className="w-full bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(26,10,46,0.06)] text-left"
           >
-            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-3">Trilha ativa</p>
+            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-3">Desafio ativo</p>
             <div className="flex gap-3 items-center mb-3">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
@@ -263,7 +263,7 @@ export default function HomePage() {
           onClick={() => router.push("/trilhas")}
           className="w-full py-3.5 border border-[#EDD5F5] rounded-2xl text-[#6B3FA0] text-xs tracking-widest uppercase"
         >
-          Ver todas as trilhas
+          Ver todos os desafios
         </motion.button>
       </div>
 

@@ -105,8 +105,8 @@ export default function TrilhasPage() {
 
       <div className="bg-[#1A0A2E] px-5 pt-12 pb-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Biblioteca</p>
-          <h1 className="text-white text-2xl font-light">Trilhas de Aprendizado</h1>
+          <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Sua rotina saudável</p>
+          <h1 className="text-white text-2xl font-light">Desafios do casal</h1>
         </motion.div>
       </div>
 

@@ -49,7 +49,7 @@ function CheckoutContent() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId: appointment.id }),
+        body: JSON.stringify({ appointmentId: appointment.id, dataHora: appointment.data_hora }),
       });
 
       const { url, error } = await res.json();

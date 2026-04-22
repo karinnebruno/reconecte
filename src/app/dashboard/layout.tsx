@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Sidebar from "@/components/dashboard/Sidebar";
 
@@ -12,10 +12,12 @@ interface UserInfo {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [verificando, setVerificando] = useState(true);
 
   useEffect(() => {
+    if (pathname === "/dashboard/login") return;
     async function verificar() {
       const supabase = createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -39,6 +41,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     verificar();
   }, [router]);
+
+  if (pathname === "/dashboard/login") return <>{children}</>;
 
   if (verificando) {
     return (

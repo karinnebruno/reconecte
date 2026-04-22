@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { X, Trash2, Link2, Package, History } from "lucide-react";
-import type { Paciente } from "@/app/dashboard/pacientes/page";
+import type { Paciente } from "@/app/dashboard/(protected)/pacientes/page";
 
 interface Props {
   paciente: Paciente | null;

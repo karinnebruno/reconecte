@@ -6,18 +6,16 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/ui";
 import { createClient } from "@/lib/supabase";
 
-const trilhasAtivas = [
-  {
-    slug: "comunicacao-sem-conflito",
-    titulo: "Comunicação sem conflito",
-    modulo: "Módulo 2",
-    licao: "Lição 3 de 7",
-    progresso: 45,
-    emoji: "💬",
-  },
-];
-
-const desafioHoje = "Faça uma pergunta aberta para seu parceiro(a) hoje — sem julgamentos, só com curiosidade genuína.";
+interface Trilha {
+  id: string;
+  slug: string;
+  titulo: string;
+  emoji: string;
+  is_premium: boolean;
+  progresso: number;
+  totalLicoes: number;
+  licoesConcluidas: number;
+}
 
 const emojisHumor = [
   { valor: 1, emoji: "😔", label: "Difícil" },
@@ -26,6 +24,48 @@ const emojisHumor = [
   { valor: 4, emoji: "🙂", label: "Bem" },
   { valor: 5, emoji: "😄", label: "Ótimo" },
 ];
+
+const desafioHoje = "Faça uma pergunta aberta para seu parceiro(a) hoje — sem julgamentos, só com curiosidade genuína.";
+
+async function carregarTrilhas(supabase: ReturnType<typeof createClient>, userId: string): Promise<Trilha[]> {
+  const { data: tracksData } = await supabase
+    .from("tracks")
+    .select("id, slug, titulo, emoji, is_premium")
+    .eq("is_published", true)
+    .order("ordem");
+
+  if (!tracksData?.length) return [];
+
+  const trackIds = tracksData.map(t => t.id);
+  const { data: modulosData } = await supabase.from("modules").select("id, track_id").in("track_id", trackIds);
+  const moduloIds = (modulosData || []).map(m => m.id);
+  const { data: licoesData } = await supabase.from("lessons").select("id, module_id").in("module_id", moduloIds.length ? moduloIds : ["none"]);
+  const { data: progressoData } = await supabase.from("user_progress").select("lesson_id").eq("user_id", userId);
+
+  const concluidasSet = new Set((progressoData || []).map(p => p.lesson_id));
+  const moduloPorTrack: Record<string, string[]> = {};
+  for (const mod of modulosData || []) {
+    if (!moduloPorTrack[mod.track_id]) moduloPorTrack[mod.track_id] = [];
+    moduloPorTrack[mod.track_id].push(mod.id);
+  }
+  const licoesPorModulo: Record<string, string[]> = {};
+  for (const lic of licoesData || []) {
+    if (!licoesPorModulo[lic.module_id]) licoesPorModulo[lic.module_id] = [];
+    licoesPorModulo[lic.module_id].push(lic.id);
+  }
+
+  return tracksData.map(track => {
+    const modIds = moduloPorTrack[track.id] || [];
+    const licIds = modIds.flatMap(mid => licoesPorModulo[mid] || []);
+    const concluidas = licIds.filter(lid => concluidasSet.has(lid)).length;
+    return {
+      ...track,
+      totalLicoes: licIds.length,
+      licoesConcluidas: concluidas,
+      progresso: licIds.length > 0 ? Math.round((concluidas / licIds.length) * 100) : 0,
+    };
+  });
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -36,6 +76,7 @@ export default function HomePage() {
   const [notaHumor, setNotaHumor] = useState("");
   const [humorSalvo, setHumorSalvo] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [trilhas, setTrilhas] = useState<Trilha[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -43,31 +84,20 @@ export default function HomePage() {
     async function carregarUsuario() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/entrar"); return; }
-
       setUserId(user.id);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("nome")
-        .eq("id", user.id)
-        .single();
-      if (profile) setNomeUsuario(profile.nome.split(" ")[0]);
-
-      const { data: streakData } = await supabase
-        .from("streaks")
-        .select("current_streak")
-        .eq("user_id", user.id)
-        .single();
-      if (streakData) setStreak(streakData.current_streak);
-
       const hoje = new Date().toISOString().split("T")[0];
-      const { data: humor } = await supabase
-        .from("mood_entries")
-        .select("humor")
-        .eq("user_id", user.id)
-        .eq("data", hoje)
-        .single();
-      if (humor) { setHumorSelecionado(humor.humor); setHumorSalvo(true); }
+      const [profileRes, streakRes, humorRes, trilhasData] = await Promise.all([
+        supabase.from("profiles").select("nome").eq("id", user.id).single(),
+        supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
+        supabase.from("mood_entries").select("humor").eq("user_id", user.id).eq("data", hoje).single(),
+        carregarTrilhas(supabase, user.id),
+      ]);
+
+      if (profileRes.data) setNomeUsuario(profileRes.data.nome.split(" ")[0]);
+      if (streakRes.data) setStreak(streakRes.data.current_streak);
+      if (humorRes.data) { setHumorSelecionado(humorRes.data.humor); setHumorSalvo(true); }
+      setTrilhas(trilhasData);
     }
 
     carregarUsuario();
@@ -83,15 +113,7 @@ export default function HomePage() {
     const supabase = createClient();
     const hoje = new Date().toISOString().split("T")[0];
     const emojiAtual = emojisHumor.find(h => h.valor === humorSelecionado)?.emoji;
-
-    await supabase.from("mood_entries").upsert({
-      user_id: userId,
-      humor: humorSelecionado,
-      emoji: emojiAtual,
-      nota: notaHumor || null,
-      data: hoje,
-    });
-
+    await supabase.from("mood_entries").upsert({ user_id: userId, humor: humorSelecionado, emoji: emojiAtual, nota: notaHumor || null, data: hoje });
     setHumorSalvo(true);
     setMostrarNotaHumor(false);
   }
@@ -102,6 +124,9 @@ export default function HomePage() {
     if (h < 18) return "Boa tarde";
     return "Boa noite";
   })();
+
+  const trilhaAtiva = trilhas.find(t => !t.is_premium && t.progresso > 0 && t.progresso < 100) || trilhas.find(t => !t.is_premium && t.progresso === 0);
+  const outrasTrihas = trilhas.filter(t => t.id !== trilhaAtiva?.id);
 
   return (
     <div className="min-h-dvh bg-[#FAF4FF] pb-24">
@@ -132,9 +157,7 @@ export default function HomePage() {
         >
           {!humorSalvo ? (
             <>
-              <p className="text-[#9B7BB8] text-xs tracking-widest uppercase mb-3">
-                Como está seu relacionamento hoje?
-              </p>
+              <p className="text-[#9B7BB8] text-xs tracking-widest uppercase mb-3">Como está seu relacionamento hoje?</p>
               <div className="flex justify-between">
                 {emojisHumor.map(({ valor, emoji, label }) => (
                   <button
@@ -149,7 +172,6 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
-
               <AnimatePresence>
                 {mostrarNotaHumor && (
                   <motion.div
@@ -188,32 +210,13 @@ export default function HomePage() {
           )}
         </motion.div>
 
-        {/* CTA agendamento */}
-        <motion.button
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          onClick={() => router.push("/agenda")}
-          whileTap={{ scale: 0.98 }}
-          className="w-full bg-[#1A0A2E] rounded-2xl p-4 flex justify-between items-center"
-        >
-          <div className="text-left">
-            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-0.5">Precisa de apoio?</p>
-            <p className="text-white text-sm">Agendar sessão de orientação</p>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-[#6B3FA0]/40 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs">→</span>
-          </div>
-        </motion.button>
-
-        {/* Trilha ativa */}
-        {trilhasAtivas.map((trilha, i) => (
+        {/* Desafio ativo */}
+        {trilhaAtiva && (
           <motion.button
-            key={trilha.slug}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-            onClick={() => router.push(`/trilhas/${trilha.slug}`)}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            onClick={() => router.push(`/trilhas/${trilhaAtiva.slug}`)}
             whileTap={{ scale: 0.98 }}
             className="w-full bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(26,10,46,0.06)] text-left"
           >
@@ -223,43 +226,104 @@ export default function HomePage() {
                 className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, #6B3FA0, #B07FD4)" }}
               >
-                {trilha.emoji}
+                {trilhaAtiva.emoji}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[#1A0A2E] text-sm font-medium mb-0.5 truncate">{trilha.titulo}</p>
-                <p className="text-[#9B7BB8] text-xs">{trilha.modulo} · {trilha.licao}</p>
+                <p className="text-[#1A0A2E] text-sm font-medium truncate">{trilhaAtiva.titulo}</p>
+                <p className="text-[#9B7BB8] text-xs">{trilhaAtiva.totalLicoes} lições</p>
               </div>
             </div>
             <div className="w-full h-1.5 bg-[#EDD5F5] rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-[#6B3FA0] to-[#B07FD4]"
                 initial={{ width: 0 }}
-                animate={{ width: `${trilha.progresso}%` }}
+                animate={{ width: `${trilhaAtiva.progresso}%` }}
                 transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
               />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-[#9B7BB8] text-[10px]">{trilha.progresso}% concluído</span>
+              <span className="text-[#9B7BB8] text-[10px]">{trilhaAtiva.progresso}% concluído</span>
               <span className="text-[#6B3FA0] text-[10px] tracking-wide">Continuar →</span>
             </div>
           </motion.button>
-        ))}
+        )}
+
+        {/* Outros desafios */}
+        {outrasTrihas.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
+          >
+            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-3">Outros desafios</p>
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
+              {outrasTrihas.map((trilha) => (
+                <button
+                  key={trilha.slug}
+                  onClick={() => trilha.is_premium ? null : router.push(`/trilhas/${trilha.slug}`)}
+                  className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 shadow-[0_2px_12px_rgba(26,10,46,0.07)] text-left relative"
+                >
+                  {trilha.is_premium && (
+                    <div className="absolute top-2 right-2 bg-[#1A0A2E] rounded-full p-1">
+                      <svg className="w-3 h-3 text-[#9B7BB8]" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-2 ${
+                      trilha.is_premium ? "bg-[#EDD5F5]" : "bg-gradient-to-br from-[#6B3FA0] to-[#B07FD4]"
+                    }`}
+                  >
+                    {trilha.emoji}
+                  </div>
+                  <p className={`text-xs font-medium leading-snug ${trilha.is_premium ? "text-[#9B7BB8]" : "text-[#1A0A2E]"}`}>
+                    {trilha.titulo}
+                  </p>
+                  {trilha.is_premium ? (
+                    <p className="text-[9px] text-[#6B3FA0] mt-1.5 font-medium">R$ 15 · Desbloquear</p>
+                  ) : (
+                    <p className="text-[9px] text-[#9B7BB8] mt-1">{trilha.totalLicoes} lições</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Desafio do dia */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="bg-[#EDD5F5] rounded-2xl p-4 border-l-4 border-[#6B3FA0]"
         >
           <p className="text-[#6B3FA0] text-[10px] tracking-widest uppercase mb-2">✦ Desafio de hoje</p>
           <p className="text-[#1A0A2E] text-sm leading-relaxed">{desafioHoje}</p>
         </motion.div>
 
+        {/* CTA sessão */}
         <motion.button
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+          onClick={() => router.push("/sessao")}
+          whileTap={{ scale: 0.98 }}
+          className="w-full bg-[#1A0A2E] rounded-2xl p-4 flex justify-between items-center"
+        >
+          <div className="text-left">
+            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-0.5">Precisa de apoio?</p>
+            <p className="text-white text-sm">Falar com a Dra. Karinne Bruno</p>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-[#6B3FA0]/40 flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs">→</span>
+          </div>
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => router.push("/trilhas")}
           className="w-full py-3.5 border border-[#EDD5F5] rounded-2xl text-[#6B3FA0] text-xs tracking-widest uppercase"
         >

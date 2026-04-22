@@ -21,6 +21,7 @@ export default function TrilhasPage() {
   const router = useRouter();
   const [trilhas, setTrilhas] = useState<Trilha[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [comprando, setComprando] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -124,50 +125,79 @@ export default function TrilhasPage() {
             ? Math.round((trilha.licoesConcluidas / trilha.totalLicoes) * 100)
             : 0;
 
+          async function handleComprar() {
+            setComprando(trilha.id);
+            const res = await fetch("/api/checkout-track", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ trackId: trilha.id, trackSlug: trilha.slug, trackTitulo: trilha.titulo, trackEmoji: trilha.emoji }),
+            });
+            const { url } = await res.json();
+            if (url) window.location.href = url;
+            else setComprando(null);
+          }
+
           return (
-            <motion.button
+            <motion.div
               key={trilha.slug}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.07 }}
-              whileTap={!trilha.is_premium ? { scale: 0.98 } : undefined}
-              onClick={() => !trilha.is_premium && router.push(`/trilhas/${trilha.slug}`)}
-              className={`w-full text-left rounded-2xl p-4 flex gap-3 items-center shadow-[0_2px_16px_rgba(26,10,46,0.06)] transition-all duration-200 ${
-                trilha.is_premium ? "bg-[#F0E2FB] opacity-60" : "bg-white"
-              }`}
+              className="w-full text-left rounded-2xl shadow-[0_2px_16px_rgba(26,10,46,0.06)] bg-white overflow-hidden"
             >
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
-                  trilha.is_premium ? "bg-[#EDD5F5]" : "bg-gradient-to-br from-[#6B3FA0] to-[#B07FD4]"
-                }`}
+              <button
+                className="w-full flex gap-3 items-center p-4"
+                onClick={() => !trilha.is_premium && router.push(`/trilhas/${trilha.slug}`)}
               >
-                {trilha.emoji}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-0.5">
-                  <p className={`text-sm font-medium truncate ${trilha.is_premium ? "text-[#6B3FA0]" : "text-[#1A0A2E]"}`}>
-                    {trilha.titulo}
-                  </p>
-                  {trilha.is_premium && (
-                    <span className="flex-shrink-0 text-[9px] tracking-widest uppercase bg-[#6B3FA0]/20 text-[#6B3FA0] px-2 py-0.5 rounded-full">
-                      Em breve
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
+                    trilha.is_premium ? "bg-[#EDD5F5]" : "bg-gradient-to-br from-[#6B3FA0] to-[#B07FD4]"
+                  }`}
+                >
+                  {trilha.is_premium ? (
+                    <span className="relative">
+                      <span className="text-2xl">{trilha.emoji}</span>
                     </span>
+                  ) : trilha.emoji}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-0.5">
+                    <p className={`text-sm font-medium truncate ${trilha.is_premium ? "text-[#9B7BB8]" : "text-[#1A0A2E]"}`}>
+                      {trilha.titulo}
+                    </p>
+                    {trilha.is_premium && (
+                      <svg className="w-4 h-4 text-[#9B7BB8] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <p className="text-[#9B7BB8] text-xs mb-2">
+                    {trilha.totalLicoes > 0 ? `${trilha.totalLicoes} lições` : "Conteúdo em breve"}
+                  </p>
+                  {!trilha.is_premium && trilha.totalLicoes > 0 && (
+                    <div className="w-full h-1 bg-[#EDD5F5] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#6B3FA0] to-[#B07FD4] rounded-full transition-all duration-700"
+                        style={{ width: `${progresso}%` }}
+                      />
+                    </div>
                   )}
                 </div>
-                <p className="text-[#9B7BB8] text-xs mb-2">
-                  {trilha.totalLicoes > 0 ? `${trilha.totalLicoes} lições` : "Conteúdo em breve"}
-                </p>
-                {!trilha.is_premium && trilha.totalLicoes > 0 && (
-                  <div className="w-full h-1 bg-[#EDD5F5] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#6B3FA0] to-[#B07FD4] rounded-full transition-all duration-700"
-                      style={{ width: `${progresso}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            </motion.button>
+              </button>
+
+              {trilha.is_premium && (
+                <div className="px-4 pb-4">
+                  <button
+                    onClick={handleComprar}
+                    disabled={comprando === trilha.id}
+                    className="w-full bg-[#6B3FA0] text-white py-2.5 rounded-xl text-xs font-medium tracking-wide disabled:opacity-60 transition-all"
+                  >
+                    {comprando === trilha.id ? "Aguarde..." : "🔓 Desbloquear por R$ 15,00"}
+                  </button>
+                </div>
+              )}
+            </motion.div>
           );
         })}
       </div>

@@ -22,14 +22,29 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const appointmentId = session.metadata?.appointment_id;
+    const supabase = createClient();
 
-    if (appointmentId) {
-      const supabase = createClient();
-      await supabase
-        .from("appointments")
-        .update({ status: "confirmed", stripe_session_id: session.id })
-        .eq("id", appointmentId);
+    if (session.metadata?.type === "track_purchase") {
+      const trackId = session.metadata.track_id;
+      const userId = session.customer_details?.email
+        ? (await supabase.from("profiles").select("id").eq("email", session.customer_details.email).single()).data?.id
+        : null;
+
+      if (trackId && userId) {
+        await supabase.from("user_track_purchases").upsert({
+          user_id: userId,
+          track_id: trackId,
+          stripe_session_id: session.id,
+        });
+      }
+    } else {
+      const appointmentId = session.metadata?.appointment_id;
+      if (appointmentId) {
+        await supabase
+          .from("appointments")
+          .update({ status: "confirmed", stripe_session_id: session.id })
+          .eq("id", appointmentId);
+      }
     }
   }
 

@@ -29,7 +29,7 @@ function gerarHorarios(slot: Slot, data: Date, ocupados: string[]): string[] {
     const label = `${h}:${m}`;
     const dataHora = `${data.toISOString().split("T")[0]}T${label}`;
     if (!ocupados.includes(dataHora)) horarios.push(label);
-    atual += slot.duracao_minutos;
+    atual += 60;
   }
   return horarios;
 }

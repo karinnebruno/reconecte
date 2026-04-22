@@ -91,12 +91,43 @@ export default function AgendaPage() {
     carregar();
   }, [router]);
 
-  function selecionarDia(dia: Date) {
+  async function selecionarDia(dia: Date) {
     setDiaSelecionado(dia);
     setHorarioSelecionado(null);
+    setHorariosDisponiveis([]);
+
     const slot = slots.find(s => s.dia_semana === dia.getDay());
-    if (slot) {
-      setHorariosDisponiveis(gerarHorarios(slot, dia, ocupados));
+    if (!slot) return;
+
+    // Busca horários já agendados no Supabase
+    const horariosSupabase = gerarHorarios(slot, dia, ocupados);
+
+    // Consulta Google Calendar para remover horários ocupados
+    try {
+      const dateStr = dia.toISOString().split("T")[0];
+      const res = await fetch(`/api/google-busy?date=${dateStr}`);
+      const { ocupados: googleOcupados } = await res.json();
+
+      // Filtra horários que conflitam com eventos do Google
+      const livres = horariosSupabase.filter(hora => {
+        const [h, m] = hora.split(":").map(Number);
+        const inicioSlot = h * 60 + m;
+        const fimSlot = inicioSlot + slot.duracao_minutos;
+
+        return !googleOcupados.some((evento: { inicio: string; fim: string }) => {
+          const [eh, em] = evento.inicio.split(":").map(Number);
+          const [fh, fm] = evento.fim.split(":").map(Number);
+          const inicioEvento = eh * 60 + em;
+          const fimEvento = fh * 60 + fm;
+          // Conflita se houver qualquer sobreposição
+          return inicioSlot < fimEvento && fimSlot > inicioEvento;
+        });
+      });
+
+      setHorariosDisponiveis(livres);
+    } catch {
+      // Se Google Calendar falhar, mostra os horários do Supabase mesmo assim
+      setHorariosDisponiveis(horariosSupabase);
     }
   }
 

@@ -40,7 +40,7 @@ export default function AdminAgendamentos() {
       .select("id, data_hora, status, profiles(nome, email)")
       .order("data_hora", { ascending: true });
 
-    setAgendamentos((data as Agendamento[]) || []);
+    setAgendamentos((data as unknown as Agendamento[]) || []);
     setCarregando(false);
   }
 

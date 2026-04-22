@@ -50,7 +50,8 @@ export default function LandingPage() {
   }
 
   const totalEtapas = 4;
-  const etapaNum = { nome: 1, email: 2, horario: 3, senha: 4 }[etapa] ?? 0;
+  const etapaMap: Partial<Record<Etapa, number>> = { nome: 1, email: 2, horario: 3, senha: 4 };
+  const etapaNum = etapaMap[etapa] ?? 0;
 
   return (
     <div className="min-h-dvh bg-[#1A0A2E]">

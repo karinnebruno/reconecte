@@ -4,12 +4,14 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-const topicos = [
-  { emoji: "💬", titulo: "Comunicação no casal", desc: "Aprenda a expressar o que sente sem gerar conflito" },
-  { emoji: "❤️", titulo: "Intimidade e reconexão", desc: "Recupere a cumplicidade e a alegria de estar junto" },
-  { emoji: "🧠", titulo: "Inteligência emocional", desc: "Entenda seus padrões e os do seu parceiro(a)" },
-  { emoji: "🌱", titulo: "Construção de hábitos", desc: "Crie uma rotina saudável e sustentável a dois" },
+const especializacoes = [
+  "Neuropsicóloga",
+  "Neurocientista",
+  "Sexóloga",
+  "Psicologia Analítica Junguiana",
 ];
+
+const atuacoes = ["Terapeuta de casais", "Psicanalista"];
 
 export default function SessaoPage() {
   const router = useRouter();
@@ -22,8 +24,8 @@ export default function SessaoPage() {
           ← Voltar
         </button>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Sessão de orientação</p>
-          <h1 className="text-white text-2xl font-light">Como posso te ajudar</h1>
+          <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Sessão única de orientação</p>
+          <h1 className="text-white text-2xl font-light">Baseada na psicoterapia breve</h1>
         </motion.div>
       </div>
 
@@ -42,68 +44,59 @@ export default function SessaoPage() {
             </div>
             <div>
               <p className="text-[#1A0A2E] text-base font-medium">Dra. Karinne Bruno</p>
-              <p className="text-[#9B7BB8] text-xs mt-0.5 leading-snug">
-                Neuropsicóloga · Sexóloga<br />Terapeuta de Casais
-              </p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {atuacoes.map(a => (
+                  <span key={a} className="text-[9px] bg-[#EDD5F5] text-[#6B3FA0] px-2 py-0.5 rounded-full">{a}</span>
+                ))}
+              </div>
             </div>
           </div>
-          <p className="text-[#1A0A2E] text-sm leading-relaxed">
-            Sou especialista em relacionamentos saudáveis e há mais de 10 anos ajudo casais a se reconectarem emocionalmente, melhorarem a comunicação e construírem uma vida a dois com mais leveza e propósito.
+
+          <p className="text-[#1A0A2E] text-sm leading-relaxed mb-4">
+            Especialista em relacionamentos saudáveis, há anos ajuda casais e pessoas a se reconectarem emocionalmente, melhorarem a comunicação e construírem vínculos mais saudáveis.
           </p>
-          <div className="mt-4 pt-4 border-t border-[#F0E2FB] flex gap-4">
-            <div className="text-center">
-              <p className="text-[#1A0A2E] text-lg font-light">10+</p>
-              <p className="text-[#9B7BB8] text-[10px]">anos de experiência</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[#1A0A2E] text-lg font-light">500+</p>
-              <p className="text-[#9B7BB8] text-[10px]">casais atendidos</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[#1A0A2E] text-lg font-light">3</p>
-              <p className="text-[#9B7BB8] text-[10px]">especializações</p>
+
+          <div className="border-t border-[#F0E2FB] pt-4">
+            <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-2">Especializações</p>
+            <div className="flex flex-wrap gap-2">
+              {especializacoes.map(e => (
+                <span key={e} className="text-[10px] bg-[#FAF4FF] border border-[#EDD5F5] text-[#6B3FA0] px-2 py-1 rounded-lg">{e}</span>
+              ))}
             </div>
           </div>
         </motion.div>
 
-        {/* O que abordamos */}
+        {/* Para quem é */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
+          className="bg-[#EDD5F5] rounded-2xl p-5"
         >
-          <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-3">O que podemos trabalhar</p>
-          <div className="grid grid-cols-2 gap-2">
-            {topicos.map((t, i) => (
-              <motion.div
-                key={t.titulo}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.06 }}
-                className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(26,10,46,0.06)]"
-              >
-                <span className="text-2xl">{t.emoji}</span>
-                <p className="text-[#1A0A2E] text-xs font-medium mt-2">{t.titulo}</p>
-                <p className="text-[#9B7BB8] text-[10px] mt-0.5 leading-snug">{t.desc}</p>
-              </motion.div>
-            ))}
-          </div>
+          <p className="text-[#6B3FA0] text-[10px] tracking-widest uppercase mb-3">Para quem é essa sessão?</p>
+          <p className="text-[#1A0A2E] text-sm leading-relaxed mb-3">
+            A sessão pode ser <strong>individual</strong> — para quem quer entender melhor a si mesmo — ou <strong>em casal</strong> — para quem quer dar o primeiro passo junto.
+          </p>
+          <p className="text-[#1A0A2E] text-sm leading-relaxed">
+            Alguém precisa dar o primeiro passo. Esse pode ser o seu. 💜
+          </p>
         </motion.div>
 
         {/* Como funciona */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="bg-[#EDD5F5] rounded-2xl p-5"
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(26,10,46,0.06)]"
         >
-          <p className="text-[#6B3FA0] text-[10px] tracking-widest uppercase mb-3">Como funciona</p>
+          <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase mb-3">Como funciona</p>
           <div className="space-y-3">
             {[
               { n: "1", texto: "Escolha um dia e horário disponível" },
-              { n: "2", texto: "Realize o pagamento de R$ 250,00" },
-              { n: "3", texto: "Receba a confirmação por e-mail" },
-              { n: "4", texto: "Sessão online de 50 minutos via Google Meet" },
+              { n: "2", texto: "Preencha seu nome e WhatsApp" },
+              { n: "3", texto: "Realize o pagamento de R$ 250,00" },
+              { n: "4", texto: "Confirmação via WhatsApp em até 24h" },
+              { n: "5", texto: "Sessão online de 50 minutos pelo Google Meet" },
             ].map(({ n, texto }) => (
               <div key={n} className="flex gap-3 items-center">
                 <div className="w-6 h-6 rounded-full bg-[#6B3FA0] text-white text-xs flex items-center justify-center flex-shrink-0 font-medium">
@@ -119,7 +112,7 @@ export default function SessaoPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="space-y-3 pb-4"
         >
           <div className="bg-white rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_16px_rgba(26,10,46,0.06)]">
@@ -127,7 +120,10 @@ export default function SessaoPage() {
               <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase">Valor da sessão</p>
               <p className="text-[#1A0A2E] text-2xl font-light mt-0.5">R$ 250,00</p>
             </div>
-            <p className="text-[#9B7BB8] text-xs text-right">50 min<br />Online</p>
+            <div className="text-right">
+              <p className="text-[#9B7BB8] text-xs">50 min · Online</p>
+              <p className="text-[#9B7BB8] text-xs">Individual ou em casal</p>
+            </div>
           </div>
 
           <button

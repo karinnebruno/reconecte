@@ -54,6 +54,9 @@ export default function AgendaPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
+  const [nomeContato, setNomeContato] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [preAgendado, setPreAgendado] = useState<string | null>(null); // appointment id
   const [mesAtual, setMesAtual] = useState(() => {
     const hoje = new Date();
     return { ano: hoje.getFullYear(), mes: hoje.getMonth() };
@@ -133,8 +136,8 @@ export default function AgendaPage() {
     }
   }
 
-  async function confirmarAgendamento() {
-    if (!diaSelecionado || !horarioSelecionado || !userId) return;
+  async function preAgendar() {
+    if (!diaSelecionado || !horarioSelecionado || !userId || !nomeContato.trim() || !whatsapp.trim()) return;
     setConfirmando(true);
     const [h, m] = horarioSelecionado.split(":").map(Number);
     const dataHora = new Date(diaSelecionado);
@@ -144,12 +147,29 @@ export default function AgendaPage() {
       user_id: userId,
       data_hora: dataHora.toISOString(),
       status: "pending",
+      nome_contato: nomeContato.trim(),
+      whatsapp: whatsapp.trim(),
     }).select().single();
     if (data) {
-      router.push(`/agenda/checkout?appointment=${data.id}`);
-    } else {
-      setConfirmando(false);
+      setPreAgendado(data.id);
     }
+    setConfirmando(false);
+  }
+
+  async function irParaPagamento() {
+    if (!preAgendado || !diaSelecionado || !horarioSelecionado) return;
+    setConfirmando(true);
+    const [h, m] = horarioSelecionado.split(":").map(Number);
+    const dataHora = new Date(diaSelecionado);
+    dataHora.setHours(h, m, 0, 0);
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: preAgendado, dataHora: dataHora.toISOString() }),
+    });
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+    else setConfirmando(false);
   }
 
   const hoje = new Date();
@@ -307,9 +327,9 @@ export default function AgendaPage() {
               )}
             </AnimatePresence>
 
-            {/* Resumo e confirmação */}
+            {/* Pré-agendamento: formulário ou confirmação */}
             <AnimatePresence>
-              {diaSelecionado && horarioSelecionado && (
+              {diaSelecionado && horarioSelecionado && !preAgendado && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -317,22 +337,70 @@ export default function AgendaPage() {
                   className="space-y-3"
                 >
                   <div className="bg-[#EDD5F5] rounded-2xl p-4">
-                    <p className="text-[#6B3FA0] text-[10px] tracking-widest uppercase mb-2">Resumo</p>
+                    <p className="text-[#6B3FA0] text-[10px] tracking-widest uppercase mb-2">Horário escolhido</p>
                     <p className="text-[#1A0A2E] text-sm font-medium">
                       {DIAS_COMPLETO[diaSelecionado.getDay()]}, {diaSelecionado.getDate()} de {MESES[diaSelecionado.getMonth()]}
                     </p>
-                    <p className="text-[#1A0A2E] text-sm">às {horarioSelecionado}</p>
-                    <p className="text-[#9B7BB8] text-xs mt-1">
-                      {slotSelecionado?.duracao_minutos} min · Sessão de orientação · R$ 250,00
+                    <p className="text-[#1A0A2E] text-sm">às {horarioSelecionado} · {slotSelecionado?.duracao_minutos} min · R$ 250,00</p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-4 space-y-3 shadow-[0_2px_16px_rgba(26,10,46,0.06)]">
+                    <p className="text-[#9B7BB8] text-[10px] tracking-widest uppercase">Seus dados para contato</p>
+                    <input
+                      type="text"
+                      value={nomeContato}
+                      onChange={e => setNomeContato(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full border border-[#EDD5F5] rounded-xl px-3 py-2.5 text-sm text-[#1A0A2E] placeholder:text-[#9B7BB8]/60 focus:outline-none focus:border-[#6B3FA0] transition-colors"
+                    />
+                    <input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={e => setWhatsapp(e.target.value)}
+                      placeholder="WhatsApp (com DDD)"
+                      className="w-full border border-[#EDD5F5] rounded-xl px-3 py-2.5 text-sm text-[#1A0A2E] placeholder:text-[#9B7BB8]/60 focus:outline-none focus:border-[#6B3FA0] transition-colors"
+                    />
+                    <p className="text-[#9B7BB8] text-[10px]">
+                      A confirmação da sessão será enviada pelo WhatsApp após o pagamento.
                     </p>
                   </div>
 
                   <button
-                    onClick={confirmarAgendamento}
-                    disabled={confirmando}
-                    className="w-full bg-[#1A0A2E] text-white py-4 rounded-2xl text-sm font-medium tracking-wide hover:bg-[#6B3FA0] transition-all duration-200 disabled:opacity-60"
+                    onClick={preAgendar}
+                    disabled={confirmando || !nomeContato.trim() || !whatsapp.trim()}
+                    className="w-full bg-[#1A0A2E] text-white py-4 rounded-2xl text-sm font-medium tracking-wide hover:bg-[#6B3FA0] transition-all duration-200 disabled:opacity-50"
                   >
-                    {confirmando ? "Aguarde..." : "Continuar para pagamento →"}
+                    {confirmando ? "Aguarde..." : "Pré-agendar →"}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {preAgendado && diaSelecionado && horarioSelecionado && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-3"
+                >
+                  <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(26,10,46,0.06)] text-center">
+                    <span className="text-3xl">✅</span>
+                    <p className="text-[#1A0A2E] text-sm font-medium mt-2">Pré-agendamento realizado!</p>
+                    <p className="text-[#9B7BB8] text-xs mt-1 leading-relaxed">
+                      {DIAS_COMPLETO[diaSelecionado.getDay()]}, {diaSelecionado.getDate()} de {MESES[diaSelecionado.getMonth()]} às {horarioSelecionado}
+                    </p>
+                    <p className="text-[#9B7BB8] text-xs mt-2">
+                      O horário só é <strong>confirmado após o pagamento</strong>. Finalize agora para garantir seu lugar.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={irParaPagamento}
+                    disabled={confirmando}
+                    className="w-full bg-[#6B3FA0] text-white py-4 rounded-2xl text-sm font-medium tracking-wide hover:bg-[#B07FD4] transition-all duration-200 disabled:opacity-60"
+                  >
+                    {confirmando ? "Redirecionando..." : "Confirmar com pagamento R$ 250,00 →"}
                   </button>
                 </motion.div>
               )}

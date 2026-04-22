@@ -9,20 +9,11 @@ interface Agendamento {
   id: string;
   data_hora: string;
   status: "pending" | "confirmed" | "cancelled";
-  profiles: { nome: string; email: string } | null;
+  nome_contato: string | null;
+  whatsapp: string | null;
+  nome_completo: string | null;
+  tipo_sessao: string | null;
 }
-
-const STATUS_LABEL = {
-  pending: "Pendente",
-  confirmed: "Confirmado",
-  cancelled: "Cancelado",
-};
-
-const STATUS_COR = {
-  pending: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-500",
-};
 
 const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const DIAS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -31,16 +22,17 @@ export default function AdminAgendamentos() {
   const router = useRouter();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [filtro, setFiltro] = useState<"todos" | "pending" | "confirmed">("todos");
+  const [aba, setAba] = useState<"preagendados" | "pagos">("preagendados");
+  const [totalUsuarios, setTotalUsuarios] = useState(0);
 
   async function carregar() {
     const supabase = createClient();
-    const { data } = await supabase
-      .from("appointments")
-      .select("id, data_hora, status, profiles(nome, email)")
-      .order("data_hora", { ascending: true });
-
+    const [{ data }, { count: usuarios }] = await Promise.all([
+      supabase.from("appointments").select("id, data_hora, status, nome_contato, whatsapp, nome_completo, tipo_sessao").order("data_hora", { ascending: true }),
+      supabase.from("profiles").select("*", { count: "exact", head: true }).neq("role", "admin"),
+    ]);
     setAgendamentos((data as unknown as Agendamento[]) || []);
+    setTotalUsuarios(usuarios || 0);
     setCarregando(false);
   }
 
@@ -52,11 +44,13 @@ export default function AdminAgendamentos() {
     carregar();
   }
 
-  const lista = filtro === "todos"
-    ? agendamentos
-    : agendamentos.filter(a => a.status === filtro);
+  const preAgendados = agendamentos.filter(a => a.status === "pending");
+  const pagos = agendamentos.filter(a => a.status === "confirmed");
+  const lista = aba === "preagendados" ? preAgendados : pagos;
 
-  const pendentes = agendamentos.filter(a => a.status === "pending").length;
+  const pctAgendouEPagou = totalUsuarios > 0 ? Math.round((pagos.length / totalUsuarios) * 100) : 0;
+  const pctAgendouNaoPagou = totalUsuarios > 0 ? Math.round((preAgendados.length / totalUsuarios) * 100) : 0;
+  const pctNuncaAgendou = totalUsuarios > 0 ? Math.max(0, 100 - pctAgendouEPagou - pctAgendouNaoPagou) : 0;
 
   return (
     <div className="min-h-dvh bg-[#FAF4FF]">
@@ -67,27 +61,45 @@ export default function AdminAgendamentos() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-[#9B7BB8] text-xs tracking-[0.2em] uppercase mb-1">Admin</p>
           <h1 className="text-white text-2xl font-light">Agendamentos</h1>
-          {pendentes > 0 && (
-            <p className="text-[#B07FD4] text-xs mt-1">{pendentes} aguardando confirmação</p>
-          )}
         </motion.div>
       </div>
 
       <div className="px-5 pt-5 pb-10 space-y-4">
 
-        {/* Filtros */}
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white rounded-2xl p-3 text-center shadow-[0_2px_12px_rgba(26,10,46,0.06)]">
+            <p className="text-[#6B3FA0] text-xl font-light">{pctAgendouEPagou}%</p>
+            <p className="text-[#9B7BB8] text-[9px] mt-0.5 leading-snug">Agendou e pagou</p>
+          </div>
+          <div className="bg-white rounded-2xl p-3 text-center shadow-[0_2px_12px_rgba(26,10,46,0.06)]">
+            <p className="text-yellow-500 text-xl font-light">{pctAgendouNaoPagou}%</p>
+            <p className="text-[#9B7BB8] text-[9px] mt-0.5 leading-snug">Pré-agendou sem pagar</p>
+          </div>
+          <div className="bg-white rounded-2xl p-3 text-center shadow-[0_2px_12px_rgba(26,10,46,0.06)]">
+            <p className="text-[#9B7BB8] text-xl font-light">{pctNuncaAgendou}%</p>
+            <p className="text-[#9B7BB8] text-[9px] mt-0.5 leading-snug">Nunca agendou</p>
+          </div>
+        </div>
+
+        {/* Abas */}
         <div className="flex gap-2">
-          {(["todos", "pending", "confirmed"] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                filtro === f ? "bg-[#6B3FA0] text-white" : "bg-white border border-[#EDD5F5] text-[#9B7BB8]"
-              }`}
-            >
-              {f === "todos" ? "Todos" : f === "pending" ? "Pendentes" : "Confirmados"}
-            </button>
-          ))}
+          <button
+            onClick={() => setAba("preagendados")}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              aba === "preagendados" ? "bg-yellow-100 text-yellow-700 border border-yellow-200" : "bg-white border border-[#EDD5F5] text-[#9B7BB8]"
+            }`}
+          >
+            Não confirmados ({preAgendados.length})
+          </button>
+          <button
+            onClick={() => setAba("pagos")}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              aba === "pagos" ? "bg-green-100 text-green-700 border border-green-200" : "bg-white border border-[#EDD5F5] text-[#9B7BB8]"
+            }`}
+          >
+            Pagos ({pagos.length})
+          </button>
         </div>
 
         {carregando && (
@@ -99,8 +111,8 @@ export default function AdminAgendamentos() {
         {!carregando && lista.length === 0 && (
           <div className="text-center py-12">
             <p className="text-3xl mb-3">📅</p>
-            <p className="text-[#1A0A2E] text-sm font-medium mb-1">Nenhum agendamento</p>
-            <p className="text-[#9B7BB8] text-xs">Os agendamentos aparecerão aqui.</p>
+            <p className="text-[#1A0A2E] text-sm font-medium mb-1">Nenhum agendamento aqui</p>
+            <p className="text-[#9B7BB8] text-xs">{aba === "preagendados" ? "Não há pré-agendamentos pendentes." : "Nenhuma sessão paga ainda."}</p>
           </div>
         )}
 
@@ -114,25 +126,26 @@ export default function AdminAgendamentos() {
               transition={{ delay: i * 0.05 }}
               className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(26,10,46,0.06)]"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-[#EDD5F5] flex flex-col items-center justify-center flex-shrink-0">
-                    <span className="text-[#6B3FA0] text-[10px] uppercase">{DIAS[data.getDay()]}</span>
-                    <span className="text-[#1A0A2E] text-lg font-light leading-none">{data.getDate()}</span>
-                    <span className="text-[#9B7BB8] text-[9px]">{MESES[data.getMonth()]}</span>
-                  </div>
-                  <div>
-                    <p className="text-[#1A0A2E] text-sm font-medium">
-                      {a.profiles?.nome || "Usuária"}
-                    </p>
-                    <p className="text-[#9B7BB8] text-xs">{a.profiles?.email || ""}</p>
-                    <p className="text-[#9B7BB8] text-xs mt-0.5">
-                      às {data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl bg-[#EDD5F5] flex flex-col items-center justify-center flex-shrink-0">
+                  <span className="text-[#6B3FA0] text-[9px] uppercase">{DIAS[data.getDay()]}</span>
+                  <span className="text-[#1A0A2E] text-lg font-light leading-none">{data.getDate()}</span>
+                  <span className="text-[#9B7BB8] text-[9px]">{MESES[data.getMonth()]}</span>
                 </div>
-                <span className={`text-[10px] px-2 py-1 rounded-full tracking-wide ${STATUS_COR[a.status]}`}>
-                  {STATUS_LABEL[a.status]}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#1A0A2E] text-sm font-medium">{a.nome_completo || a.nome_contato || "Sem nome"}</p>
+                  {a.whatsapp && <p className="text-[#9B7BB8] text-xs">📲 {a.whatsapp}</p>}
+                  {a.tipo_sessao && (
+                    <p className="text-[#9B7BB8] text-xs">{a.tipo_sessao === "casal" ? "👥 Em casal" : "👤 Individual"}</p>
+                  )}
+                  <p className="text-[#9B7BB8] text-xs mt-0.5">
+                    às {data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <span className={`text-[10px] px-2 py-1 rounded-full ${
+                  a.status === "confirmed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                }`}>
+                  {a.status === "confirmed" ? "Pago" : "Pré-agendado"}
                 </span>
               </div>
 
@@ -142,7 +155,7 @@ export default function AdminAgendamentos() {
                     onClick={() => atualizarStatus(a.id, "confirmed")}
                     className="flex-1 bg-[#6B3FA0] text-white py-2 rounded-xl text-xs"
                   >
-                    Confirmar
+                    Marcar como pago
                   </button>
                   <button
                     onClick={() => atualizarStatus(a.id, "cancelled")}

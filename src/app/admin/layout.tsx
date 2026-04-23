@@ -1,41 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+
+const ROUTE_MAP: Record<string, string> = {
+  "/admin": "/dashboard",
+  "/admin/trilhas": "/dashboard/trilhas",
+  "/admin/desafios": "/dashboard/desafios",
+  "/admin/agendamentos": "/dashboard/agendamentos",
+  "/admin/agenda": "/dashboard/disponibilidade",
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [verificando, setVerificando] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
-    const supabase = createClient();
-    async function verificar() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/entrar"); return; }
+    const exact = ROUTE_MAP[pathname];
+    if (exact) { router.replace(exact); return; }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile || profile.role !== "admin") {
-        router.replace("/home");
-        return;
-      }
-      setVerificando(false);
+    // /admin/trilhas/[id]/... → /dashboard/trilhas/[id]/...
+    if (pathname.startsWith("/admin/")) {
+      router.replace(pathname.replace("/admin/", "/dashboard/"));
     }
-    verificar();
-  }, [router]);
+  }, [pathname, router]);
 
-  if (verificando) {
-    return (
-      <div className="min-h-dvh bg-[#1A0A2E] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-[#6B3FA0] border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <div className="min-h-dvh bg-[#1A0A2E] flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-[#6B3FA0] border-t-transparent animate-spin" />
+    </div>
+  );
 }

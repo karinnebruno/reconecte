@@ -12,6 +12,10 @@ import {
   LogOut,
   Menu,
   X,
+  CalendarCheck,
+  Clock,
+  Zap,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -27,6 +31,10 @@ const navAdmin = [
   { href: "/dashboard/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: DollarSign },
   { href: "/dashboard/tarefas", label: "Tarefas", icon: CheckSquare },
+  { href: "/dashboard/agendamentos", label: "Agendamentos", icon: CalendarCheck },
+  { href: "/dashboard/disponibilidade", label: "Disponibilidade", icon: Clock },
+  { href: "/dashboard/desafios", label: "Desafios diários", icon: Zap },
+  { href: "/dashboard/trilhas", label: "Trilhas", icon: BookOpen },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];
 

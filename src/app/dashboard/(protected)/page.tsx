@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Users, CalendarDays, DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { Users, CalendarDays, DollarSign, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react";
 
 interface Stats {
   totalPacientes: number;
@@ -123,12 +123,12 @@ export default function DashboardHome() {
       bg: "bg-green-50",
     },
     {
-      label: "Lucro do mês",
-      valor: carregando ? "—" : `R$ ${lucroMes.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`,
-      sub: lucroMes >= 0 ? "Positivo ✓" : "Negativo ⚠",
-      icon: TrendingUp,
-      cor: lucroMes >= 0 ? "text-green-600" : "text-red-500",
-      bg: lucroMes >= 0 ? "bg-green-50" : "bg-red-50",
+      label: "Despesas do mês",
+      valor: carregando ? "—" : `R$ ${stats.despesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`,
+      sub: `Saldo: R$ ${lucroMes.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`,
+      icon: TrendingDown,
+      cor: "text-red-500",
+      bg: "bg-red-50",
     },
   ];
 

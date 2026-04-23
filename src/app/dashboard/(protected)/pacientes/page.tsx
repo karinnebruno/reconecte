@@ -32,23 +32,27 @@ export default function PacientesPage() {
 
   async function carregar() {
     const supabase = createClient();
-    const { data } = await supabase
+
+    const { data: pacientesData } = await supabase
       .from("patients")
-      .select(`
-        id, nome, whatsapp, email, cpf, data_nascimento, status,
-        parceiro_id, notas_admin, created_at,
-        parceiro:patients!patients_parceiro_id_fkey(id, nome),
-        session_packages(sessoes_restantes)
-      `)
+      .select("id, nome, whatsapp, email, cpf, data_nascimento, status, parceiro_id, notas_admin, created_at")
       .order("nome");
 
+    const { data: packagesData } = await supabase
+      .from("session_packages")
+      .select("patient_id, sessoes_restantes");
+
+    const sessionMap: Record<string, number> = {};
+    for (const pkg of packagesData || []) {
+      const id = (pkg as { patient_id: string; sessoes_restantes: number }).patient_id;
+      sessionMap[id] = (sessionMap[id] || 0) + ((pkg as { sessoes_restantes: number }).sessoes_restantes || 0);
+    }
+
     setPacientes(
-      (data || []).map((p: Record<string, unknown>) => ({
+      (pacientesData || []).map((p: Record<string, unknown>) => ({
         ...p,
-        sessoes_restantes: ((p.session_packages as { sessoes_restantes: number }[] | null) || []).reduce(
-          (s: number, pkg: { sessoes_restantes: number }) => s + (pkg.sessoes_restantes || 0),
-          0
-        ),
+        parceiro: null,
+        sessoes_restantes: sessionMap[p.id as string] || 0,
       })) as Paciente[]
     );
     setCarregando(false);
